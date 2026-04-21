@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Newsletter Builder</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    color: #1a1a2e;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: .5px; flex: 1; }
+  header span { font-size: .8rem; color: #8888aa; }
+
+  .btn {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 500;
+    transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-primary   { background: #4f8ef7; color: #fff; }
+  .btn-secondary { background: #2e2e4a; color: #ccc; }
+  .btn-success   { background: #27ae60; color: #fff; }
+  .btn-outline   { background: transparent; color: #4f8ef7; border: 1px solid #4f8ef7; }
+
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  .articles-panel {
+    width: 55%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #dde1ea;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .panel-toolbar {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eaedf2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    background: #fafbfd;
+  }
+
+  .filter-btn {
+    padding: 5px 13px;
+    border-radius: 20px;
+    border: 1px solid #d0d5e0;
+    background: #fff;
+    font-size: .8rem;
+    cursor: pointer;
+    color: #555;
+    transition: all .15s;
+  }
+  .filter-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+  .selected-count { margin-left: auto; font-size: .8rem; color: #888; }
+  .selected-count strong { color: #4f8ef7; }
+
+  .article-list { overflow-y: auto; flex: 1; padding: 10px 12px; }
+
+  .article-card {
+    display: flex;
+    gap: 12px;
+    padding: 12px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .12s;
+    border-bottom: 1px solid #f0f2f5;
+  }
+  .article-card:hover { background: #f5f7ff; }
+  .article-card.selected { background: #eef3ff; }
+
+  .article-card input[type=checkbox] {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: #4f8ef7;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .article-body { flex: 1; min-width: 0; }
+  .article-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 3px; flex-wrap: wrap; }
+
+  .source-tag { font-size: .72rem; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: #e8eeff; color: #4f8ef7; }
+  .cat-tag    { font-size: .7rem; padding: 2px 7px; border-radius: 4px; color: #fff; }
+  .cat-ecommerce { background: #e67e22; }
+  .cat-media     { background: #8e44ad; }
+  .article-date  { font-size: .72rem; color: #aaa; margin-left: auto; }
+  .article-title   { font-size: .9rem; font-weight: 600; line-height: 1.4; margin-bottom: 4px; color: #1a1a2e; }
+  .article-summary { font-size: .8rem; color: #666; line-height: 1.45; }
+
+  .loading, .error-msg {
+    text-align: center;
+    padding: 40px 20px;
+    color: #888;
+    font-size: .9rem;
+  }
+  .error-msg { color: #e74c3c; }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #e0e4ef;
+    border-top-color: #4f8ef7;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .preview-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .preview-toolbar {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eaedf2;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+    background: #fafbfd;
+  }
+  .preview-toolbar-row { display: flex; align-items: center; gap: 10px; }
+  .preview-toolbar h2 { font-size: .95rem; font-weight: 600; flex: 1; }
+
+  .newsletter-title-input {
+    flex: 1;
+    padding: 7px 11px;
+    border: 1px solid #d0d5e0;
+    border-radius: 6px;
+    font-size: .85rem;
+    color: #1a1a2e;
+  }
+  .newsletter-title-input:focus { outline: none; border-color: #4f8ef7; }
+
+  .preview-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+  .nl-header { border-bottom: 3px solid #1a1a2e; padding-bottom: 12px; margin-bottom: 20px; }
+  .nl-header h2 { font-size: 1.25rem; color: #1a1a2e; margin-bottom: 2px; }
+  .nl-header .nl-date { font-size: .8rem; color: #888; }
+
+  .nl-section-title {
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin: 18px 0 10px;
+    display: inline-block;
+  }
+  .nl-section-ecommerce { background: #e67e22; }
+  .nl-section-media     { background: #8e44ad; }
+
+  .nl-item { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #eaedf2; }
+  .nl-item:last-child { border-bottom: none; }
+  .nl-item-title   { font-size: .9rem; font-weight: 600; color: #1a1a2e; line-height: 1.4; }
+  .nl-item-source  { font-size: .75rem; color: #4f8ef7; margin: 2px 0 4px; }
+  .nl-item-summary { font-size: .82rem; color: #555; line-height: 1.45; }
+  .nl-item-link    { font-size: .78rem; color: #4f8ef7; text-decoration: none; display: inline-block; margin-top: 4px; }
+  .nl-item-link:hover { text-decoration: underline; }
+
+  .nl-empty { text-align: center; color: #bbb; padding: 60px 20px; font-size: .9rem; }
+  .nl-empty strong { display: block; font-size: 1.6rem; margin-bottom: 8px; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: #27ae60;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: .88rem;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all .25s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Newsletter Builder</h1>
+  <span id="last-updated"></span>
+  <button class="btn btn-secondary" id="btn-refresh">↻ Refresh</button>
+</header>
+
+<div class="layout">
+  <div class="articles-panel">
+    <div class="panel-toolbar">
+      <button class="filter-btn active" data-cat="all">All</button>
+      <button class="filter-btn" data-cat="Ecommerce &amp; Retail">Ecommerce &amp; Retail</button>
+      <button class="filter-btn" data-cat="Media &amp; Marketing">Media &amp; Marketing</button>
+      <span class="selected-count">Selected: <strong id="count">0</strong></span>
+    </div>
+    <div class="article-list" id="article-list">
+      <div class="loading"><div class="spinner"></div>Loading articles…</div>
+    </div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="preview-toolbar">
+      <div class="preview-toolbar-row">
+        <h2>Newsletter Preview</h2>
+        <button class="btn btn-outline" id="btn-clear">Clear</button>
+        <button class="btn btn-success" id="btn-copy">Copy for Outlook</button>
+      </div>
+      <div class="preview-toolbar-row">
+        <input class="newsletter-title-input" id="nl-title" type="text"
+          placeholder="Newsletter name…" value="Ecommerce &amp; Marketing Digest">
+      </div>
+    </div>
+    <div class="preview-body" id="preview-body">
+      <div class="nl-empty"><strong>📋</strong>Select articles on the left<br>to build your newsletter.</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FEEDS = [
+  { name: 'Digiday',           url: 'https://digiday.com/feed/',                      category: 'Media & Marketing'    },
+  { name: 'Modern Retail',     url: 'https://www.modernretail.co/feed/',               category: 'Ecommerce & Retail'   },
+  { name: 'Retail Dive',       url: 'https://www.retaildive.com/feeds/news/',          category: 'Ecommerce & Retail'   },
+  { name: 'Marketing Week',    url: 'https://www.marketingweek.com/feed/',             category: 'Media & Marketing'    },
+  { name: 'AdAge',             url: 'https://adage.com/rss.xml',                       category: 'Media & Marketing'    },
+  { name: 'Adweek',            url: 'https://www.adweek.com/feed/',                    category: 'Media & Marketing'    },
+  { name: 'The Drum',          url: 'https://www.thedrum.com/rss',                     category: 'Media & Marketing'    },
+  { name: 'Search Engine Land',url: 'https://searchengineland.com/feed',               category: 'Media & Marketing'    },
+  { name: 'Retail Gazette',    url: 'https://www.retailgazette.co.uk/feed/',           category: 'Ecommerce & Retail'   },
+  { name: 'TechCrunch Retail', url: 'https://techcrunch.com/tag/retail/feed/',         category: 'Ecommerce & Retail'   },
+];
+
+const RSS2JSON = 'https://api.rss2json.com/v1/api.json';
+
+let allArticles = [];
+let selected = new Set();
+let activeFilter = 'all';
+
+function stripHtml(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  return d.textContent || '';
+}
+
+function formatDate(str) {
+  if (!str) return 'Recent';
+  const d = new Date(str);
+  return isNaN(d) ? 'Recent' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+async function fetchFeed(feed) {
+  try {
+    const url = `${RSS2JSON}?rss_url=${encodeURIComponent(feed.url)}&count=6`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status !== 'ok') return [];
+    return data.items.map(item => {
+      const summary = stripHtml(item.description).trim().slice(0, 220).replace(/\s+\S*$/, '…');
+      const ts = new Date(item.pubDate).getTime() || 0;
+      return {
+        id: item.link,
+        title: item.title || 'Untitled',
+        url: item.link || '',
+        source: feed.name,
+        category: feed.category,
+        date: formatDate(item.pubDate),
+        timestamp: ts,
+        summary,
+      };
+    });
+  } catch { return []; }
+}
+
+async function fetchAll() {
+  document.getElementById('article-list').innerHTML =
+    '<div class="loading"><div class="spinner"></div>Loading articles…</div>';
+  selected.clear();
+  updateCount();
+
+  const results = await Promise.all(FEEDS.map(fetchFeed));
+  allArticles = results.flat().sort((a, b) => b.timestamp - a.timestamp);
+
+  document.getElementById('last-updated').textContent =
+    'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  renderArticles();
+}
+
+function renderArticles() {
+  const list = document.getElementById('article-list');
+  const filtered = activeFilter === 'all'
+    ? allArticles
+    : allArticles.filter(a => a.category === activeFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="loading">No articles found.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(a => {
+    const isEcom = a.category === 'Ecommerce & Retail';
+    return `
+      <div class="article-card ${selected.has(a.id) ? 'selected' : ''}" data-id="${esc(a.id)}">
+        <input type="checkbox" ${selected.has(a.id) ? 'checked' : ''}>
+        <div class="article-body">
+          <div class="article-meta">
+            <span class="source-tag">${esc(a.source)}</span>
+            <span class="cat-tag ${isEcom ? 'cat-ecommerce' : 'cat-media'}">${esc(a.category)}</span>
+            <span class="article-date">${esc(a.date)}</span>
+          </div>
+          <div class="article-title">${esc(a.title)}</div>
+          ${a.summary ? `<div class="article-summary">${esc(a.summary)}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.article-card').forEach(card => {
+    const cb = card.querySelector('input[type=checkbox]');
+    const toggle = () => {
+      const id = card.dataset.id;
+      if (selected.has(id)) { selected.delete(id); card.classList.remove('selected'); cb.checked = false; }
+      else                   { selected.add(id);    card.classList.add('selected');    cb.checked = true;  }
+      updateCount();
+      renderPreview();
+    };
+    card.addEventListener('click', e => { if (e.target !== cb) toggle(); });
+    cb.addEventListener('change', toggle);
+  });
+}
+
+function updateCount() {
+  document.getElementById('count').textContent = selected.size;
+}
+
+function renderPreview() {
+  const body = document.getElementById('preview-body');
+  const title = document.getElementById('nl-title').value || 'Newsletter';
+  const items = allArticles.filter(a => selected.has(a.id));
+
+  if (!items.length) {
+    body.innerHTML = '<div class="nl-empty"><strong>📋</strong>Select articles on the left<br>to build your newsletter.</div>';
+    return;
+  }
+
+  const ecom  = items.filter(a => a.category === 'Ecommerce & Retail');
+  const media = items.filter(a => a.category === 'Media & Marketing');
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  let html = `<div class="nl-header"><h2>${esc(title)}</h2><div class="nl-date">${today}</div></div>`;
+
+  if (ecom.length) {
+    html += `<div class="nl-section-title nl-section-ecommerce">Ecommerce &amp; Retail</div>`;
+    html += ecom.map(nlItem).join('');
+  }
+  if (media.length) {
+    html += `<div class="nl-section-title nl-section-media">Media &amp; Marketing</div>`;
+    html += media.map(nlItem).join('');
+  }
+
+  body.innerHTML = html;
+}
+
+function nlItem(a) {
+  return `
+    <div class="nl-item">
+      <div class="nl-item-title">${esc(a.title)}</div>
+      <div class="nl-item-source">${esc(a.source)} · ${esc(a.date)}</div>
+      ${a.summary ? `<div class="nl-item-summary">${esc(a.summary)}</div>` : ''}
+      <a class="nl-item-link" href="${esc(a.url)}" target="_blank">Read more →</a>
+    </div>`;
+}
+
+function copyForOutlook() {
+  const title = document.getElementById('nl-title').value || 'Newsletter';
+  const items = allArticles.filter(a => selected.has(a.id));
+  if (!items.length) { showToast('Select some articles first!', '#e74c3c'); return; }
+
+  const ecom  = items.filter(a => a.category === 'Ecommerce & Retail');
+  const media = items.filter(a => a.category === 'Media & Marketing');
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  function section(items, label, color) {
+    if (!items.length) return '';
+    const rows = items.map(a => `
+      <tr><td style="padding:10px 0;border-bottom:1px solid #eee;">
+        <div style="font-size:15px;font-weight:600;color:#1a1a2e;margin-bottom:3px;">${a.title}</div>
+        <div style="font-size:12px;color:${color};margin-bottom:5px;">${a.source} &middot; ${a.date}</div>
+        ${a.summary ? `<div style="font-size:13px;color:#555;line-height:1.5;margin-bottom:5px;">${a.summary}</div>` : ''}
+        <a href="${a.url}" style="font-size:12px;color:#4f8ef7;">Read more &rarr;</a>
+      </td></tr>`).join('');
+    return `
+      <tr><td style="padding:14px 0 2px;">
+        <span style="background:${color};color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;
+          text-transform:uppercase;padding:4px 10px;border-radius:4px;">${label}</span>
+      </td></tr>${rows}`;
+  }
+
+  const emailHtml = `
+    <table style="font-family:Segoe UI,Arial,sans-serif;max-width:620px;width:100%;border-collapse:collapse;">
+      <tr><td style="border-bottom:3px solid #1a1a2e;padding-bottom:12px;">
+        <div style="font-size:20px;font-weight:700;color:#1a1a2e;">${title}</div>
+        <div style="font-size:12px;color:#888;margin-top:3px;">${today}</div>
+      </td></tr>
+      ${section(ecom,  'Ecommerce & Retail', '#e67e22')}
+      ${section(media, 'Media & Marketing',  '#8e44ad')}
+    </table>`;
+
+  const plain = items.map(a => `${a.title}\n${a.source} · ${a.date}\n${a.summary || ''}\n${a.url}\n`).join('\n');
+
+  navigator.clipboard.write([
+    new ClipboardItem({
+      'text/html':  new Blob([emailHtml], { type: 'text/html' }),
+      'text/plain': new Blob([plain],     { type: 'text/plain' }),
+    })
+  ])
+  .then(() => showToast('Copied! Paste directly into your Outlook email.'))
+  .catch(() => navigator.clipboard.writeText(plain).then(() => showToast('Copied as plain text.')));
+}
+
+function showToast(msg, bg = '#27ae60') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = bg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+document.getElementById('btn-refresh').addEventListener('click', fetchAll);
+document.getElementById('btn-clear').addEventListener('click', () => {
+  selected.clear(); updateCount(); renderArticles(); renderPreview();
+});
+document.getElementById('btn-copy').addEventListener('click', copyForOutlook);
+document.getElementById('nl-title').addEventListener('input', renderPreview);
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.cat;
+    renderArticles();
+  });
+});
+
+fetchAll();
+</script>
+</body>
+</html>
